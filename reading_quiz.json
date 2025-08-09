@@ -1,0 +1,16 @@
+{
+  "timerMinutes": 20,
+  "passage": "Hello , Iam dog",
+  "questions": [
+    {
+      "text": "What animals is that?\\",
+      "options": [
+        "Chó\\",
+        "Mèo\\",
+        "Lợn\\",
+        "Gà\\"
+      ],
+      "answer": 0
+    }
+  ]
+}

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Comprehension Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .highlight-yellow {
+            background-color: #fef08a; /* Vàng nhạt */
+        }
+        .highlight-blue {
+            background-color: #bfdbfe; /* Xanh da trời nhạt */
+        }
+        .highlight-pink {
+            background-color: #f9a8d4; /* Hồng nhạt */
+        }
+        .highlight-green {
+            background-color: #86efac; /* Xanh lá nhạt */
+        }
+        .correct-answer {
+            background-color: #86efac; /* Xanh lá nhạt */
+        }
+        .wrong-answer {
+            background-color: #fca5a5; /* Đỏ nhạt */
+        }
+        .selected-answer.correct {
+            background-color: #10b981; /* Xanh lá đậm */
+            color: white;
+        }
+        .selected-answer.wrong {
+            background-color: #ef4444; /* Đỏ đậm */
+            color: white;
+        }
+        /* Style cho highlight người dùng bôi đen */
+        .highlight-selected {
+            background-color: #fffb9d; /* Màu vàng sáng */
+        }
+        /* Style cho thanh công cụ highlight */
+        #highlight-toolbar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            z-index: 40;
+        }
+        #highlight-toolbar .color-button {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        #highlight-toolbar .color-button:hover {
+            transform: scale(1.1);
+        }
+        /* Style for mobile view */
+        @media (max-width: 768px) {
+            .left-column, .right-column {
+                width: 100%;
+                max-height: 50vh;
+            }
+            .left-column {
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col h-screen">
+
+    <!-- Header với đồng hồ và nút nộp bài -->
+    <header class="bg-white shadow-md p-4 flex items-center justify-between sticky top-0 z-10">
+        <h1 class="text-2xl font-bold text-gray-800">Bài Đọc Hiểu Tiếng Anh</h1>
+        <div class="flex items-center space-x-4">
+            <button id="uploadBtn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-300 shadow-md">
+                Tạo Quiz mới
+            </button>
+            <button id="loadQuizBtn" class="bg-yellow-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-yellow-600 transition duration-300 shadow-md">
+                Tải Quiz lên
+            </button>
+            <input type="file" id="fileInput" accept=".json" class="hidden">
+            <button id="saveQuizBtn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300 shadow-md">
+                Lưu Quiz
+            </button>
+            <!-- Đóng khung các nút điều khiển timer -->
+            <div class="flex items-center space-x-2 border-2 border-gray-300 rounded-lg p-2 bg-gray-50">
+                <button id="resetBtn" class="bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-500 transition duration-300 shadow-md">
+                    Đặt lại
+                </button>
+                <button id="pauseBtn" class="bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-700 transition duration-300 shadow-md">
+                    Tạm dừng
+                </button>
+                <button id="startBtn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300 shadow-md hidden">
+                    Bắt đầu
+                </button>
+                <button id="setTimeBtn" class="bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition duration-300 shadow-md">
+                    Đặt giờ
+                </button>
+                <div id="timer" class="text-xl font-bold text-gray-700">00:00</div>
+            </div>
+            <button id="submitBtn" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-300 shadow-md">
+                Nộp bài
+            </button>
+        </div>
+    </header>
+
+    <!-- Khu vực nội dung chính với hai cột -->
+    <main class="flex-grow flex flex-col md:flex-row p-4 md:p-6 overflow-hidden relative">
+        
+        <!-- Cột trái: Đoạn văn -->
+        <div class="left-column w-full md:w-1/2 p-4 md:p-6 bg-white rounded-xl shadow-lg overflow-y-auto mb-4 md:mb-0 md:mr-4">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Reading Passage</h2>
+            <div id="passage" class="text-base leading-relaxed text-gray-700">
+                <!-- Nội dung đoạn văn sẽ được chèn vào đây bằng JS -->
+            </div>
+        </div>
+
+        <!-- Cột phải: Câu hỏi -->
+        <div class="right-column w-full md:w-1/2 p-4 md:p-6 bg-white rounded-xl shadow-lg overflow-y-auto">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Questions</h2>
+            <form id="quizForm" class="space-y-6">
+                <!-- Câu hỏi sẽ được chèn vào đây bằng JS -->
+            </form>
+            
+            <!-- Hộp kết quả (ban đầu bị ẩn) -->
+            <div id="resultBox" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 z-20">
+                <div class="bg-white rounded-xl p-8 shadow-2xl max-w-md w-full text-center">
+                    <h3 class="text-3xl font-bold text-gray-800 mb-4">Kết quả làm bài</h3>
+                    <p class="text-xl mb-2">Số câu đúng: <span id="scoreCount" class="font-bold text-green-600"></span> / <span id="totalCount" class="font-bold"></span></p>
+                    <p class="text-xl mb-4">Điểm: <span id="percentageScore" class="font-bold text-blue-600"></span></p>
+                    <button id="closeResultBtn" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-300">
+                        Đóng
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Thanh công cụ highlight nổi -->
+        <div id="highlight-toolbar" class="bg-white rounded-lg shadow-xl p-2 flex space-x-2 border border-gray-200">
+            <button class="color-button bg-yellow-300" data-color="highlight-yellow" title="Highlight vàng"></button>
+            <button class="color-button bg-blue-300" data-color="highlight-blue" title="Highlight xanh dương"></button>
+            <button class="color-button bg-pink-300" data-color="highlight-pink" title="Highlight hồng"></button>
+            <button class="color-button bg-green-300" data-color="highlight-green" title="Highlight xanh lá"></button>
+            <button id="removeHighlightBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1 px-3 rounded-md transition duration-300" title="Bỏ highlight">
+                Xóa
+            </button>
+        </div>
+    </main>
+
+    <!-- Modal cho phần tạo quiz mới -->
+    <div id="uploadModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 z-30">
+        <div class="bg-white rounded-xl p-8 shadow-2xl max-w-2xl w-full text-left">
+            <h3 class="text-2xl font-bold text-gray-800 mb-4">Tạo Quiz mới</h3>
+            <p class="text-sm text-gray-600 mb-4">
+                **Hướng dẫn:**
+                <br>
+                1. Dán đoạn văn vào ô "Đoạn văn". Bạn có thể dùng tag &lt;span class="highlight-..."&gt;&lt;/span&gt; để highlight.
+                <br>
+                2. Dán các câu hỏi vào ô "Câu hỏi". Mỗi dòng là một câu hỏi.
+                <br>
+                **Định dạng mỗi câu hỏi:** Câu hỏi?\|Lựa chọn A\|Lựa chọn B\|Lựa chọn C\|Lựa chọn D\|Index đáp án đúng (0-3)
+                <br>
+                **Ví dụ:** What is the main subject?\|The sky\|The sea\|The weather\|The clouds\|2
+            </p>
+            <div class="space-y-4">
+                <div>
+                    <label for="passageInput" class="block font-semibold text-gray-700 mb-2">Đoạn văn:</label>
+                    <textarea id="passageInput" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="8"></textarea>
+                </div>
+                <div>
+                    <label for="questionsInput" class="block font-semibold text-gray-700 mb-2">Câu hỏi:</label>
+                    <textarea id="questionsInput" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="8"></textarea>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-4">
+                <button id="cancelUploadBtn" class="bg-gray-400 text-white font-semibold py-2 px-6 rounded-lg hover:bg-gray-500 transition duration-300">
+                    Hủy
+                </button>
+                <button id="saveUploadBtn" class="bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 transition duration-300">
+                    Lưu & Bắt đầu
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal để đặt thời gian -->
+    <div id="setTimeModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 z-30">
+        <div class="bg-white rounded-xl p-8 shadow-2xl max-w-md w-full text-center">
+            <h3 class="text-2xl font-bold text-gray-800 mb-4">Đặt thời gian làm bài</h3>
+            <label for="timeInput" class="block font-semibold text-gray-700 mb-2">Số phút:</label>
+            <input type="number" id="timeInput" class="w-full p-3 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500" value="20" min="1">
+            <div class="mt-6 flex justify-end space-x-4">
+                <button id="cancelTimeBtn" class="bg-gray-400 text-white font-semibold py-2 px-6 rounded-lg hover:bg-gray-500 transition duration-300">
+                    Hủy
+                </button>
+                <button id="saveTimeBtn" class="bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 transition duration-300">
+                    Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const quizData = {
+            timerMinutes: 20,
+            passage: `
+                <p>
+                    At the local community center, volunteer coach Mark Chen leads a group of young basketball players through a series of drills. Like thousands of others across the country, Chen represents a new generation of sports volunteers. <span class="highlight-yellow">These individuals typically come from backgrounds in physical education, competitive athletics, youth counseling, and sports medicine.</span> Through their combined expertise, they create structured environments where young athletes develop both sports skills and personal growth.
+                </p>
+                <p>
+                    Recent studies highlight how volunteer coaches transform youth sports culture. <span class="highlight-blue">Traditional coaching emphasized winning and competition, but modern approaches prioritize character development and team dynamics.</span> Successful programs now seek volunteers who can integrate physical training with lessons about responsibility, teamwork, and resilience. These multifaceted coaching methods have proven particularly effective in building confidence among young athletes.
+                </p>
+                <p>
+                    Managing volunteer coaches presents unique challenges for sports organizations. While enthusiasm runs high at season start, maintaining persistent involvement throughout the year proves challenging. Some organizations address this through collaborative coaching teams. <span class="highlight-pink">The Riverside Youth League introduced a partner system where coaches share seasonal responsibilities.</span> Their methodical approach enables volunteers to balance personal commitments while ensuring teams receive steady guidance. This strategy has received positive feedback for reducing individual pressure without compromising program quality.
+                </p>
+                <p>
+                    <span class="highlight-green">Many sports organizations have evolved beyond traditional recognition methods. Instead of annual appreciation events, programs like SportShare provide sophisticated professional development opportunities that incorporate multilevel certification courses.</span> They systematically design comprehensive workshops covering advanced coaching techniques, leadership development, and youth mentorship strategies. Research shows that volunteers participating in these rigorous learning programs demonstrate deeper community engagement and sustained long-term commitment. These elaborate development initiatives require extensive coordination and substantial resource allocation, prompting many smaller organizations to explore alternative approaches.
+                </p>
+            `,
+            questions: [
+                {
+                    text: "What is the primary subject of the provided text?",
+                    options: [
+                        "The financial challenges of running a community center.",
+                        "The evolution of volunteer coaching in youth sports.",
+                        "The career path of a professional basketball player named Mark Chen.",
+                        "The benefits of competitive athletics for young people."
+                    ],
+                    answer: 1
+                },
+                {
+                    text: "According to the passage, what is a common background for the new generation of sports volunteers?",
+                    options: [
+                        "Financial analysis.",
+                        "Sports medicine.",
+                        "Culinary arts.",
+                        "Digital marketing."
+                    ],
+                    answer: 1
+                },
+                {
+                    text: "What did traditional coaching methods primarily emphasize?",
+                    options: [
+                        "Building personal relationships.",
+                        "Developing teamwork and resilience.",
+                        "Winning and competition.",
+                        "Providing professional development."
+                    ],
+                    answer: 2
+                },
+                {
+                    text: "What is one of the main challenges sports organizations face with their volunteers?",
+                    options: [
+                        "A lack of initial enthusiasm from volunteers.",
+                        "Volunteers demanding high salaries for their work.",
+                        "Difficulty in finding volunteers with the right expertise.",
+                        "Maintaining volunteers' involvement throughout the year."
+                    ],
+                    answer: 3
+                },
+                {
+                    text: "What system did the Riverside Youth League implement to support its coaches?",
+                    options: [
+                        "A performance-based bonus system.",
+                        "A mandatory training program.",
+                        "A partner system for sharing responsibilities.",
+                        "An annual appreciation gala."
+                    ],
+                    answer: 2
+                }
+            ]
+        };
+
+        const passageDiv = document.getElementById('passage');
+        const quizForm = document.getElementById('quizForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const resultBox = document.getElementById('resultBox');
+        const closeResultBtn = document.getElementById('closeResultBtn');
+        const scoreCountSpan = document.getElementById('scoreCount');
+        const totalCountSpan = document.getElementById('totalCount');
+        const percentageScoreSpan = document.getElementById('percentageScore');
+        const timerDisplay = document.getElementById('timer');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const saveQuizBtn = document.getElementById('saveQuizBtn');
+        const loadQuizBtn = document.getElementById('loadQuizBtn');
+        const fileInput = document.getElementById('fileInput');
+        const uploadModal = document.getElementById('uploadModal');
+        const passageInput = document.getElementById('passageInput');
+        const questionsInput = document.getElementById('questionsInput');
+        const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+        const saveUploadBtn = document.getElementById('saveUploadBtn');
+        
+        // Các biến và nút mới cho timer
+        const pauseBtn = document.getElementById('pauseBtn');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const setTimeBtn = document.getElementById('setTimeBtn');
+        const setTimeModal = document.getElementById('setTimeModal');
+        const timeInput = document.getElementById('timeInput');
+        const saveTimeBtn = document.getElementById('saveTimeBtn');
+        const cancelTimeBtn = document.getElementById('cancelTimeBtn');
+
+        // Các biến cho tính năng highlight mới
+        const highlightToolbar = document.getElementById('highlight-toolbar');
+        const colorButtons = highlightToolbar.querySelectorAll('.color-button');
+        const removeHighlightBtn = document.getElementById('removeHighlightBtn');
+        let currentRange = null; // Biến lưu trữ đoạn văn bản đang được chọn
+
+        let timer;
+        let timeRemaining;
+        let quizSubmitted = false;
+        let timerStatus = 'paused'; // 'running' hoặc 'paused'
+
+        // Hàm gọi API Gemini để giải thích đáp án
+        async function explainAnswer(questionText, correctAnswerText, passage) {
+            const prompt = `Given the following English reading passage and a multiple-choice question with its correct answer, please provide a detailed explanation in Vietnamese for why the chosen answer is correct, referencing the text. The passage is: ${passage}. The question is: ${questionText}. The correct answer is: ${correctAnswerText}. The explanation should be in Vietnamese.`;
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = { contents: chatHistory };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    return result.candidates[0].content.parts[0].text;
+                } else {
+                    return "Không thể tạo lời giải thích. Vui lòng thử lại.";
+                }
+            } catch (error) {
+                console.error("Lỗi khi gọi API Gemini:", error);
+                return "Đã xảy ra lỗi khi tạo lời giải thích.";
+            }
+        }
+
+        // Hàm hiển thị quiz ra màn hình
+        function renderQuiz(data) {
+            passageDiv.innerHTML = data.passage;
+            quizForm.innerHTML = data.questions.map((q, qIndex) => `
+                <div id="question-container-${qIndex}" class="bg-gray-50 p-5 rounded-lg shadow-sm">
+                    <p class="font-semibold text-gray-800 mb-3">${qIndex + 1}. ${q.text}</p>
+                    <div class="space-y-2">
+                        ${q.options.map((option, oIndex) => `
+                            <label class="flex items-center space-x-3 p-3 rounded-md cursor-pointer transition duration-150 ease-in-out hover:bg-gray-200 focus-within:ring-2 focus-within:ring-blue-500">
+                                <input type="radio" name="question-${qIndex}" value="${oIndex}" class="form-radio text-blue-600 h-4 w-4">
+                                <span class="text-gray-700">${String.fromCharCode(65 + oIndex)}. ${option}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                    <div id="explanation-${qIndex}" class="mt-4 hidden">
+                        <button id="explainBtn-${qIndex}" class="bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition duration-300">
+                            Giải thích đáp án ✨
+                        </button>
+                        <div id="explanation-text-${qIndex}" class="mt-2 p-4 bg-purple-100 text-gray-800 rounded-lg hidden"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Hàm bắt đầu đồng hồ đếm ngược
+        function startTimer() {
+            if (timerStatus === 'running') return;
+            timerStatus = 'running';
+            pauseBtn.classList.remove('hidden');
+            startBtn.classList.add('hidden');
+            
+            if (!timeRemaining) {
+                timeRemaining = quizData.timerMinutes * 60;
+            }
+
+            timer = setInterval(() => {
+                const minutes = Math.floor(timeRemaining / 60);
+                const seconds = timeRemaining % 60;
+                timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timer);
+                    handleSubmit(true);
+                } else {
+                    timeRemaining--;
+                }
+            }, 1000);
+        }
+
+        // Hàm tạm dừng đồng hồ
+        function pauseTimer() {
+            if (timerStatus === 'paused') return;
+            timerStatus = 'paused';
+            clearInterval(timer);
+            pauseBtn.classList.add('hidden');
+            startBtn.classList.remove('hidden');
+        }
+
+        // Hàm đặt lại đồng hồ
+        function resetTimer() {
+            pauseTimer();
+            timeRemaining = quizData.timerMinutes * 60;
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            // Sau khi reset, ẩn nút start và hiện pause
+            pauseBtn.classList.remove('hidden');
+            startBtn.classList.add('hidden');
+        }
+
+        // Hàm xử lý nộp bài
+        function handleSubmit(autoSubmit = false) {
+            if (quizSubmitted) return;
+            quizSubmitted = true;
+            clearInterval(timer);
+            pauseBtn.classList.add('hidden');
+            startBtn.classList.add('hidden');
+            
+            let score = 0;
+            const totalQuestions = quizData.questions.length;
+            const formElements = quizForm.elements;
+
+            quizData.questions.forEach((q, qIndex) => {
+                const radios = formElements[`question-${qIndex}`];
+                const correctAnswerIndex = q.answer;
+                let userChoiceIndex = -1;
+
+                if (radios) {
+                    if (radios.length) {
+                        for (const radio of radios) {
+                            if (radio.checked) {
+                                userChoiceIndex = parseInt(radio.value);
+                                break;
+                            }
+                        }
+                    } else { 
+                        if (radios.checked) {
+                            userChoiceIndex = parseInt(radios.value);
+                        }
+                    }
+                }
+
+                if (userChoiceIndex === correctAnswerIndex) {
+                    score++;
+                }
+
+                const questionContainer = document.getElementById(`question-container-${qIndex}`);
+                const labels = questionContainer.querySelectorAll('label');
+
+                labels.forEach((label, oIndex) => {
+                    const input = label.querySelector('input');
+                    label.classList.remove('hover:bg-gray-200');
+                    label.style.cursor = 'default';
+                    input.disabled = true;
+
+                    if (oIndex === correctAnswerIndex) {
+                        label.classList.add('correct-answer');
+                    }
+                    
+                    if (userChoiceIndex === oIndex && userChoiceIndex !== correctAnswerIndex) {
+                        label.classList.add('wrong-answer');
+                    }
+                });
+
+                // Hiển thị nút giải thích đáp án
+                const explanationDiv = document.getElementById(`explanation-${qIndex}`);
+                explanationDiv.classList.remove('hidden');
+
+                const explainBtn = document.getElementById(`explainBtn-${qIndex}`);
+                const explanationTextDiv = document.getElementById(`explanation-text-${qIndex}`);
+                
+                explainBtn.addEventListener('click', async () => {
+                    explainBtn.disabled = true;
+                    explanationTextDiv.classList.remove('hidden');
+                    explanationTextDiv.textContent = "Đang tạo giải thích...";
+                    // Lấy nội dung văn bản từ div passage, bỏ các thẻ HTML highlight
+                    const passageText = passageDiv.textContent; 
+                    const explanation = await explainAnswer(
+                        q.text,
+                        q.options[q.answer],
+                        passageText
+                    );
+                    explanationTextDiv.textContent = explanation;
+                    explainBtn.disabled = false;
+                });
+            });
+
+            // Hiển thị kết quả
+            scoreCountSpan.textContent = score;
+            totalCountSpan.textContent = totalQuestions;
+            const percentage = (score / totalQuestions) * 100;
+            percentageScoreSpan.textContent = `${percentage.toFixed(2)}%`;
+            resultBox.classList.remove('hidden');
+
+            if (autoSubmit) {
+                alert("Hết giờ làm bài! Hệ thống đã tự động nộp bài.");
+            }
+        }
+
+        function saveQuizToFile() {
+            const quizJson = JSON.stringify(quizData, null, 2);
+            const blob = new Blob([quizJson], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'reading_quiz.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function loadQuizFromFile(file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const newQuizData = JSON.parse(event.target.result);
+                    if (newQuizData.passage && newQuizData.questions) {
+                        Object.assign(quizData, newQuizData);
+                        renderQuiz(quizData);
+                        startTimer();
+                    } else {
+                        alert("File JSON không hợp lệ. Vui lòng kiểm tra lại định dạng.");
+                    }
+                } catch (e) {
+                    alert("Lỗi khi đọc file. Hãy đảm bảo đó là file JSON hợp lệ.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- Logic cho tính năng Highlight ---
+
+        // Hàm tạo highlight cho đoạn văn bản đã chọn
+        function applyHighlight(colorClass) {
+            if (!currentRange) return;
+            const span = document.createElement('span');
+            span.className = colorClass;
+            
+            // Xóa highlight cũ nếu có
+            const existingHighlights = currentRange.cloneContents().querySelectorAll('span');
+            existingHighlights.forEach(el => {
+                while(el.firstChild) {
+                    el.parentNode.insertBefore(el.firstChild, el);
+                }
+                el.parentNode.removeChild(el);
+            });
+
+            try {
+                currentRange.surroundContents(span);
+                window.getSelection().removeAllRanges();
+            } catch (e) {
+                console.error("Không thể highlight đoạn văn bản này:", e);
+            }
+            highlightToolbar.style.display = 'none';
+        }
+
+        // Hàm xóa highlight
+        function removeHighlight() {
+            const selection = window.getSelection();
+            if (selection.isCollapsed) return;
+
+            const range = selection.getRangeAt(0);
+            const commonAncestor = range.commonAncestorContainer;
+            let highlightNode = commonAncestor.nodeType === Node.ELEMENT_NODE && commonAncestor.classList.contains('highlight-selected') ? commonAncestor : null;
+            if (!highlightNode) {
+                // Kiểm tra xem có phải node cha là highlight không
+                highlightNode = commonAncestor.parentNode.nodeType === Node.ELEMENT_NODE && commonAncestor.parentNode.classList.contains('highlight-selected') ? commonAncestor.parentNode : null;
+            }
+
+            if (highlightNode) {
+                const parent = highlightNode.parentNode;
+                while (highlightNode.firstChild) {
+                    parent.insertBefore(highlightNode.firstChild, highlightNode);
+                }
+                parent.removeChild(highlightNode);
+            }
+            window.getSelection().removeAllRanges();
+            highlightToolbar.style.display = 'none';
+        }
+
+        // Event listener để hiện thanh công cụ khi bôi đen
+        passageDiv.addEventListener('mouseup', (event) => {
+            if (quizSubmitted) return;
+
+            const selection = window.getSelection();
+            if (!selection.isCollapsed && passageDiv.contains(selection.anchorNode) && passageDiv.contains(selection.focusNode)) {
+                currentRange = selection.getRangeAt(0);
+                const rect = currentRange.getBoundingClientRect();
+                const passageRect = passageDiv.getBoundingClientRect();
+
+                // Lấy tọa độ tương đối
+                const top = rect.top - passageRect.top - 40;
+                const left = rect.left - passageRect.left + (rect.width / 2) - (highlightToolbar.offsetWidth / 2);
+                
+                highlightToolbar.style.top = `${top}px`;
+                highlightToolbar.style.left = `${left}px`;
+                highlightToolbar.style.display = 'flex';
+            } else {
+                highlightToolbar.style.display = 'none';
+            }
+        });
+
+        // Event listener cho nút màu trên thanh công cụ
+        colorButtons.forEach(button => {
+            button.addEventListener('click', (event) => {
+                const colorClass = event.target.dataset.color;
+                applyHighlight(colorClass);
+            });
+        });
+
+        // Event listener cho nút xóa highlight
+        removeHighlightBtn.addEventListener('click', () => {
+            removeHighlight();
+        });
+
+        // Ẩn thanh công cụ khi click ra ngoài
+        document.addEventListener('mousedown', (event) => {
+            if (!highlightToolbar.contains(event.target) && !passageDiv.contains(event.target)) {
+                highlightToolbar.style.display = 'none';
+            }
+        });
+
+        // --- Event Listeners khác ---
+        submitBtn.addEventListener('click', () => handleSubmit());
+        closeResultBtn.addEventListener('click', () => {
+            resultBox.classList.add('hidden');
+        });
+
+        uploadBtn.addEventListener('click', () => {
+            uploadModal.classList.remove('hidden');
+        });
+
+        saveQuizBtn.addEventListener('click', saveQuizToFile);
+        
+        loadQuizBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                loadQuizFromFile(file);
+            }
+        });
+
+        cancelUploadBtn.addEventListener('click', () => {
+            uploadModal.classList.add('hidden');
+        });
+
+        saveUploadBtn.addEventListener('click', () => {
+            const newPassage = passageInput.value;
+            const newQuestionsText = questionsInput.value;
+
+            if (!newPassage || !newQuestionsText) {
+                alert("Vui lòng nhập đầy đủ đoạn văn và câu hỏi.");
+                return;
+            }
+
+            const parsedQuestions = newQuestionsText.split('\n').filter(line => line.trim() !== '').map(line => {
+                const parts = line.split('|');
+                if (parts.length < 6) {
+                    console.error("Lỗi định dạng câu hỏi:", line);
+                    return null;
+                }
+                return {
+                    text: parts[0],
+                    options: parts.slice(1, 5),
+                    answer: parseInt(parts[5])
+                };
+            }).filter(q => q !== null);
+
+            if (parsedQuestions.length === 0) {
+                alert("Lỗi khi phân tích câu hỏi. Vui lòng kiểm tra lại định dạng.");
+                return;
+            }
+
+            quizData.passage = newPassage;
+            quizData.questions = parsedQuestions;
+            quizSubmitted = false;
+            uploadModal.classList.add('hidden');
+            renderQuiz(quizData);
+            startTimer();
+        });
+
+        // Event listeners cho các nút timer mới
+        startBtn.addEventListener('click', startTimer);
+        pauseBtn.addEventListener('click', pauseTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        setTimeBtn.addEventListener('click', () => {
+            timeInput.value = quizData.timerMinutes;
+            setTimeModal.classList.remove('hidden');
+        });
+        saveTimeBtn.addEventListener('click', () => {
+            const newTime = parseInt(timeInput.value);
+            if (newTime && newTime > 0) {
+                quizData.timerMinutes = newTime;
+                resetTimer();
+                setTimeModal.classList.add('hidden');
+            } else {
+                alert("Thời gian không hợp lệ. Vui lòng nhập một số dương.");
+            }
+        });
+        cancelTimeBtn.addEventListener('click', () => {
+            setTimeModal.classList.add('hidden');
+        });
+
+        // Khởi tạo
+        window.onload = function() {
+            renderQuiz(quizData);
+            resetTimer(); // Thiết lập timer ban đầu và trạng thái paused
+        };
+
+    </script>
+</body>
+</html>
