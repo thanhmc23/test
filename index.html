@@ -75,7 +75,6 @@
 </head>
 <body class="bg-gray-100 flex flex-col h-screen">
 
-    <!-- Header với đồng hồ và nút nộp bài -->
     <header class="bg-white shadow-md p-4 flex items-center justify-between sticky top-0 z-10">
         <h1 class="text-2xl font-bold text-gray-800">Bài Đọc Hiểu Tiếng Anh</h1>
         <div class="flex items-center space-x-4">
@@ -89,7 +88,6 @@
             <button id="saveQuizBtn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300 shadow-md">
                 Lưu Quiz
             </button>
-            <!-- Đóng khung các nút điều khiển timer -->
             <div class="flex items-center space-x-2 border-2 border-gray-300 rounded-lg p-2 bg-gray-50">
                 <button id="resetBtn" class="bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-500 transition duration-300 shadow-md">
                     Đặt lại
@@ -108,28 +106,25 @@
             <button id="submitBtn" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 transition duration-300 shadow-md">
                 Nộp bài
             </button>
+            <button id="resetQuizBtn" class="bg-red-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-red-600 transition duration-300 shadow-md">
+                Làm lại
+            </button>
         </div>
     </header>
 
-    <!-- Khu vực nội dung chính với hai cột -->
     <main class="flex-grow flex flex-col md:flex-row p-4 md:p-6 overflow-hidden relative">
         
-        <!-- Cột trái: Đoạn văn -->
         <div class="left-column w-full md:w-1/2 p-4 md:p-6 bg-white rounded-xl shadow-lg overflow-y-auto mb-4 md:mb-0 md:mr-4">
             <h2 class="text-xl font-bold text-gray-800 mb-4">Reading Passage</h2>
             <div id="passage" class="text-base leading-relaxed text-gray-700">
-                <!-- Nội dung đoạn văn sẽ được chèn vào đây bằng JS -->
-            </div>
+                </div>
         </div>
 
-        <!-- Cột phải: Câu hỏi -->
         <div class="right-column w-full md:w-1/2 p-4 md:p-6 bg-white rounded-xl shadow-lg overflow-y-auto">
             <h2 class="text-xl font-bold text-gray-800 mb-4">Questions</h2>
             <form id="quizForm" class="space-y-6">
-                <!-- Câu hỏi sẽ được chèn vào đây bằng JS -->
-            </form>
+                </form>
             
-            <!-- Hộp kết quả (ban đầu bị ẩn) -->
             <div id="resultBox" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 z-20">
                 <div class="bg-white rounded-xl p-8 shadow-2xl max-w-md w-full text-center">
                     <h3 class="text-3xl font-bold text-gray-800 mb-4">Kết quả làm bài</h3>
@@ -142,7 +137,6 @@
             </div>
         </div>
         
-        <!-- Thanh công cụ highlight nổi -->
         <div id="highlight-toolbar" class="bg-white rounded-lg shadow-xl p-2 flex space-x-2 border border-gray-200">
             <button class="color-button bg-yellow-300" data-color="highlight-yellow" title="Highlight vàng"></button>
             <button class="color-button bg-blue-300" data-color="highlight-blue" title="Highlight xanh dương"></button>
@@ -154,7 +148,6 @@
         </div>
     </main>
 
-    <!-- Modal cho phần tạo quiz mới -->
     <div id="uploadModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 z-30">
         <div class="bg-white rounded-xl p-8 shadow-2xl max-w-2xl w-full text-left">
             <h3 class="text-2xl font-bold text-gray-800 mb-4">Tạo Quiz mới</h3>
@@ -190,7 +183,6 @@
         </div>
     </div>
 
-    <!-- Modal để đặt thời gian -->
     <div id="setTimeModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 z-30">
         <div class="bg-white rounded-xl p-8 shadow-2xl max-w-md w-full text-center">
             <h3 class="text-2xl font-bold text-gray-800 mb-4">Đặt thời gian làm bài</h3>
@@ -281,6 +273,7 @@
         const passageDiv = document.getElementById('passage');
         const quizForm = document.getElementById('quizForm');
         const submitBtn = document.getElementById('submitBtn');
+        const resetQuizBtn = document.getElementById('resetQuizBtn'); // Nút làm lại quiz
         const resultBox = document.getElementById('resultBox');
         const closeResultBtn = document.getElementById('closeResultBtn');
         const scoreCountSpan = document.getElementById('scoreCount');
@@ -506,6 +499,22 @@
                 alert("Hết giờ làm bài! Hệ thống đã tự động nộp bài.");
             }
         }
+        
+        // Hàm làm lại bài quiz
+        function resetQuiz() {
+            // Đặt lại trạng thái của quiz
+            quizSubmitted = false;
+
+            // Đặt lại form câu hỏi
+            renderQuiz(quizData);
+            
+            // Đặt lại đồng hồ
+            resetTimer();
+
+            // Ẩn hộp kết quả nếu nó đang hiển thị
+            resultBox.classList.add('hidden');
+        }
+
 
         function saveQuizToFile() {
             const quizJson = JSON.stringify(quizData, null, 2);
@@ -633,6 +642,7 @@
 
         // --- Event Listeners khác ---
         submitBtn.addEventListener('click', () => handleSubmit());
+        resetQuizBtn.addEventListener('click', () => resetQuiz()); // Gán sự kiện cho nút Làm lại
         closeResultBtn.addEventListener('click', () => {
             resultBox.classList.add('hidden');
         });
